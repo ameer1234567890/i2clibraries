@@ -89,7 +89,7 @@ class i2c_lcd:
 		for c in string:
 			self.writeChar(c)
       
-  def backLightOn(self):
+	def backLightOn(self):
 		if self.backlight >= 0:
 			self.bus.write_byte(self.addr, self._pinInterpret(self.backlight, 0x00, 0b1))
 			self.backlight_state = True
