@@ -1,4 +1,4 @@
-import smbus
+from i2clibraries import i2c
 from time import *
 
 class i2c_lcd:
@@ -25,8 +25,7 @@ class i2c_lcd:
 	
 
 	def __init__(self, addr, port, en, rw, rs, d4, d5, d6, d7, backlight = -1):
-		self.addr = addr
-		self.bus = smbus.SMBus(port)
+		self.bus = i2c.i2c(port, addr)
 
 		self.en = en
 		self.rs = rs
@@ -68,9 +67,6 @@ class i2c_lcd:
 		self.command(self.CMD_Return_Home)
 		sleep(0.1)
 
-	def command(self, data):
-		self._write(data)
-
 	def setPosition(self, line, pos):
 		if line == 1:
 			address = pos
@@ -91,12 +87,12 @@ class i2c_lcd:
       
 	def backLightOn(self):
 		if self.backlight >= 0:
-			self.bus.write_byte(self.addr, self._pinInterpret(self.backlight, 0x00, 0b1))
+			self.bus.write_byte(self._pinInterpret(self.backlight, 0x00, 0b1))
 			self.backlight_state = True
 
 	def backLightOff(self):
 		if self.backlight >= 0:	
-			self.bus.write_byte(self.addr, self._pinInterpret(self.backlight, 0x00, 0b0))	
+			self.bus.write_byte(self._pinInterpret(self.backlight, 0x00, 0b0))	
 			self.backlight_state = False
 
 	def _write(self, data, command=True):
@@ -151,8 +147,11 @@ class i2c_lcd:
 		else:
 			data = self._pinInterpret(self.backlight, data, 0b0)
 		
-		self.bus.write_byte(self.addr, data)
-		self.bus.write_byte(self.addr, self._pinInterpret(self.en, data, 0b1))
-		self.bus.write_byte(self.addr, data)
-						
+		self.bus.write_byte(data)
+		self.bus.write_byte(self._pinInterpret(self.en, data, 0b1))
+		self.bus.write_byte(data)
+	
+	# For legacy
+	def command(self, data):
+		self._write(data)
 
