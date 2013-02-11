@@ -1,92 +1,6 @@
 import math
-import smbus
+from i2clibraries import i2c
 from time import *
-from math import *
-
-class MagnetometerAxes:
-	
-	def __init__(self, hmc5883l, x, y, z):
-		self.raw_x = x
-		self.raw_y = y 
-		self.raw_z = z
-		
-		self.scaled_x = 0
-		self.scaled_y = 0
-		self.scaled_z = 0
-
-		self.scale = hmc5883l.scale
-		self.calculateScaled()
-		
-		self.declination = 0
-
-	# Used primarily for debugging
-	def printAxes(self):
-		print "Raw X: "+str(int(self.raw_x))
-		print "Raw Y: "+str(int(self.raw_y))
-		print "Raw Z: "+str(int(self.raw_z))
-		
-		print "Twos Complement X:"+str(self.twosToInt(self.raw_x, 16))
-		print "Twos Complement Y:"+str(self.twosToInt(self.raw_y, 16))
-		print "Twos Complement Z:"+str(self.twosToInt(self.raw_z, 16))
-		
-		print "Scale X: "+str(self.scaled_x)
-		print "Scale Y: "+str(self.scaled_y)
-		print "Scale Z: "+str(self.scaled_z)
-		
-	def calculateScaled(self):
-		# Insure first 4 bits 0, 12 bit two's complement, range
-		int_x = self.twosToInt(self.raw_x, 16)
-		int_y = self.twosToInt(self.raw_y, 16)
-		int_z = self.twosToInt(self.raw_z, 16)
-		
-		if (int_x == -4096):
-			self.scaled_x = None
-		else:
-			self.scaled_x = int_x * self.scale
-			
-		if (int_y == -4096):
-			self.scaled_y = None
-		else:
-			self.scaled_y = int_y * self.scale
-			
-		if (int_z == -4096):
-			self.scaled_z = None
-		else:
-			self.scaled_z = int_z * self.scale
-			
-	def setDeclination(self, degree, min = 0):
-		self.declination = (degree+min/60) * (math.pi/180)
-		
-	# Returns heading in degrees and fraction of a minute
-	def getHeading(self):
-		headingRad = math.atan2(self.scaled_y, self.scaled_x)
-		headingRad += self.declination
-		
-		# Correct for reversed heading
-		if(headingRad < 0):
-			headingRad += 2*math.pi
-			
-		# Check for wrap and compensate
-		if(headingRad > 2*math.pi):
-			headingRad -= 2*math.pi
-			
-		# Convert to degrees from radians
-		headingDeg = headingRad * 180/math.pi
-		
-		return headingDeg
-	
-	def printHeading(self):
-		heading = self.getHeading()
-		headingDeg = int(math.floor(heading))
-		headingMin = int(math.floor((heading - headingDeg) * 60))
-		print str(headingDeg)+u"\u00b0 "+str(headingMin)+"'"
-		
-		
-	def twosToInt(self, val, len):
-		# Convert twos compliment to integer
-		if(val & (1 << len - 1)):
-			val = val - (1<<len)
-		return val
 
 class i2c_hmc5883l:
 	
@@ -110,30 +24,27 @@ class i2c_hmc5883l:
 	MeasurementIdle = 0x03
 	
 	def __init__(self, port, addr=0x1e, gauss=1.3):
-		self.addr = addr
-		self.bus = smbus.SMBus(port)
+		self.bus = i2c.i2c(port, addr)
 		
-		self.scale = 0
 		self.setScale(gauss)
 		
-	def readAxes(self):
+	def __str__(self):
+		ret_str = ""
+		(x, y, z) = self.getAxes()
+		ret_str += "Axis X: "+str(x)+"\n"       
+		ret_str += "Axis Y: "+str(y)+"\n" 
+		ret_str += "Axis Z: "+str(z)+"\n" 
 		
-		# X Axis
-		msb = self.bus.read_byte_data(self.addr, self.AxisXDataRegisterMSB)
-		x_raw = (msb << 8) | self.bus.read_byte_data(self.addr, self.AxisXDataRegisterLSB)
+		ret_str += "Declination: "+self.getDeclinationString()+"\n" 
 		
-		# Z Axis
-		msb = self.bus.read_byte_data(self.addr, self.AxisZDataRegisterMSB)
-		z_raw = (msb << 8) | self.bus.read_byte_data(self.addr, self.AxisZDataRegisterLSB)
+		ret_str += "Heading: "+self.getHeadingString()+"\n" 
 		
-		# Y Axis
-		msb = self.bus.read_byte_data(self.addr, self.AxisYDataRegisterMSB)
-		y_raw = (msb << 8) | self.bus.read_byte_data(self.addr, self.AxisYDataRegisterLSB)
-	
-		return MagnetometerAxes(self, x_raw, y_raw, z_raw)
-	
+		return ret_str
+		
+		
+		
 	def setContinuousMode(self):
-		self.bus.write_byte_data(self.addr, self.ModeRegister, self.MeasurementContinuous)
+		self.setOption(self.ModeRegister, self.MeasurementContinuous)
 		
 	def setScale(self, gauss):
 		if gauss == 0.88:
@@ -142,7 +53,6 @@ class i2c_hmc5883l:
 		elif gauss == 1.3:
 			self.scale_reg = 0x01
 			self.scale = 0.92
-			print self.scale
 		elif gauss == 1.9:
 			self.scale_reg = 0x02
 			self.scale = 1.22
@@ -163,6 +73,70 @@ class i2c_hmc5883l:
 			self.scale = 4.35
 		
 		self.scale_reg = self.scale_reg << 5
-		self.bus.write_byte_data(self.addr, self.ConfigurationRegisterB, self.scale_reg)
+		self.setOption(self.ConfigurationRegisterB, self.scale_reg)
+		
+	def setDeclination(self, degree, min = 0):
+		self.declinationDeg = degree
+		self.declinationMin = min
+		self.declination = (degree+min/60) * (math.pi/180)
+		
+	def setOption(self, register, *function_set):
+		options = 0x00
+		for function in function_set:
+			options = options | function
+		self.bus.write_byte(register, options)
+		
+	def getDeclination(self):
+		return (self.declinationDeg, self.declinationMin)
+	
+	def getDeclinationString(self):
+		return str(self.declinationDeg)+"\u00b0 "+str(self.declinationMin)+"'"
+	
+	# Returns heading in degrees and minutes
+	def getHeading(self):
+		(scaled_x, scaled_y, scaled_z) = self.getAxes()
+		
+		headingRad = math.atan2(scaled_y, scaled_x)
+		headingRad += self.declination
+
+		# Correct for reversed heading
+		if(headingRad < 0):
+			headingRad += 2*math.pi
+			
+		# Check for wrap and compensate
+		if(headingRad > 2*math.pi):
+			headingRad -= 2*math.pi
+			
+		# Convert to degrees from radians
+		headingDeg = headingRad * 180/math.pi
+		degrees = math.floor(headingDeg)
+		minutes = round(((headingDeg - degrees) * 60))
+		return (degrees, minutes)
+	
+	def getHeadingString(self):
+		(degrees, minutes) = self.getHeading()
+		return str(degrees)+"\u00b0 "+str(minutes)+"'"
+		
+	def getAxes(self):
+		(magno_x, magno_z, magno_y) = self.bus.read_3s16int(self.AxisXDataRegisterMSB)
+
+		if (magno_x == -4096):
+			magno_x = None
+		else:
+			magno_x = round(magno_x * self.scale, 4)
+			
+		if (magno_y == -4096):
+			magno_y = None
+		else:
+			magno_y = round(magno_y * self.scale, 4)
+			
+		if (magno_z == -4096):
+			magno_z = None
+		else:
+			magno_z = round(magno_z * self.scale, 4)
+			
+		return (magno_x, magno_y, magno_z)
+		
+	
 		
 	
