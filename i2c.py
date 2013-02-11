@@ -9,9 +9,9 @@ class i2c:
 		
 		self.debug = debug
 		
-	def write_byte(self, cmd, byte):
+	def write_byte(self, *bytes):
 		self.i2c_device.transaction(
-			writing_bytes(self.addr, cmd, byte))
+			writing_bytes(self.addr, *bytes))
 				
 	def read_byte(self, register):
 		byte = self.i2c_device.transaction(
