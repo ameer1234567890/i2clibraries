@@ -46,10 +46,10 @@ class i2c_adxl345:
 	AE_InactivityZ = 0x01
 	
 	# Tap Axes Configuration
-	Suppress = 0x08
-	TapXAxis = 0x04
-	TapYAxis = 0x02
-	TapZAxis = 0x01
+	TA_Suppress = 0x08
+	TA_TapXAxis = 0x04
+	TA_TapYAxis = 0x02
+	TA_TapZAxis = 0x01
 	
 	# Tap Status
 	TS_ActivityX = 0x40
@@ -94,43 +94,53 @@ class i2c_adxl345:
 		# Set defaults
 		self.setScale();
 		self.setTapThreshold()
-		self.setDuration()
-		self.setLatency()
-		self.setWindow()
+		self.setTapDuration()
+		self.setTapLatency()
+		self.setTapWindow()
 		self.setActivityThreshold()
 		self.setInactivityThreshold()
 		self.setInactivityTime()
 		self.setFreeFallThreshold()
 		self.setFreeFallTime()
+		
+	def __str__(self):
+		ret_str = ""
+		
+		(x, y, z) = self.getAxes() 
+		ret_str += "X:    "+str(x)+"\n"
+		ret_str += "Y:    "+str(y)+"\n"
+		ret_str += "Z:    "+str(z)+"\n"
+		
+		return ret_str
 
 	def wakeUp(self):
 		self.bus.write_byte(self.PowerControl, 0x00)
 		self.bus.write_byte(self.PowerControl, self.PC_Measure)
 		
-	def setTapThreshold(self, g=1.25):
+	def setTapThreshold(self, g=3):
 		# Figure out g's and then intervals based on 62.5 mg
 		# Range 0-8 g
 		intervals = math.floor(g / 0.0625)
 		if intervals < 256:
 			self.setOption(self.TapThreshold, intervals)
 		
-	def setDuration(self, millisec=10):
+	def setTapDuration(self, millisec=10):
 		# Figure out microseconds and then intervals based on 625 us
 		# Range 0-159 millisec
 		intervals = math.floor(millisec * 1000/625)
 		if intervals < 256:
 			self.setOption(self.TapDuration, intervals)
 			
-	def setLatency(self, millisec=100):
+	def setTapLatency(self, millisec=150):
 		# Figure out microseconds and then intervals based on 1.25 ms
 		# Range 0-318
 		intervals = math.floor(millisec / 1.25)
 		if intervals < 256:
 			self.setOption(self.TapLatency, intervals)
 			
-	def setWindow(self, millisec=250):
+	def setTapWindow(self, millisec=100):
 		# Figure out microseconds and then intervals based on 1.25 ms 
-		# Range 0-101
+		# Range 
 		intervals = math.floor(millisec / 1.25)
 		if intervals < 256:
 			self.setOption(self.TapWindow, intervals)
@@ -163,7 +173,7 @@ class i2c_adxl345:
 				
 		# Figure out g's and then intervals based on 62.5 mg
 		# Range 0-159 mg
-		intervals = math.floor(g / 0.0625 ) + 3
+		intervals = math.floor(g / 0.0625 ) + 5
 		if intervals < 256:
 			self.setOption(self.ActivityThreshold, intervals)
 			
@@ -184,7 +194,7 @@ class i2c_adxl345:
 		if intervals < 256:
 			self.bus.write_byte(self.InactivityThreshold, intervals)
 	
-	def setInactivityTime(self, sec=10):
+	def setInactivityTime(self, sec=1):
 		# Figure out microseconds and then intervals based on 1.25 ms 
 		# Range 0-255
 		if sec < 256:
