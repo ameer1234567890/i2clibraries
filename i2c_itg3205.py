@@ -87,8 +87,8 @@ class i2c_itg3205:
 		return temp
 	
 	def getInterruptStatus(self):
-		# (reserved, reserved, reserved, reserved, reserved, itgready, reserved, dataready)
-		return self.getOptions(self.InterruptStatus)
+		(reserved, reserved, reserved, reserved, reserved, itgready, reserved, dataready) = self.getOptions(self.InterruptStatus)
+		return (itgready, dataready)
 	
 	def getOptions(self, register):
 		options_bin = self.bus.read_byte(register)
