@@ -86,6 +86,20 @@ class i2c_hmc5883l:
 			options = options | function
 		self.bus.write_byte(register, options)
 		
+	# Adds to existing options of register	
+	def addOption(self, register, *function_set):
+		options = self.bus.read_byte(register)
+		for function in function_set:
+			options = options | function
+		self.bus.write_byte(register, options)
+		
+	# Removes options of register	
+	def removeOption(self, register, *function_set):
+		options = self.bus.read_byte(register)
+		for function in function_set:
+			options = options & (function ^ 0b11111111)
+		self.bus.write_byte(register, options)
+		
 	def getDeclination(self):
 		return (self.declinationDeg, self.declinationMin)
 	

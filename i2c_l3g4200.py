@@ -4,20 +4,33 @@ from time import *
 
 class i2c_itg3205:
 	
-	WhoAmI = 0x0
-	SampleRateDivider = 0x15
-	DLPFAndFullScale = 0x16
-	InterruptConfig = 0x17
-	InterruptStatus = 0x1A
-	TempDataRegisterMSB = 0x1B
-	TempDataRegisterLSB = 0x1C
-	GyroXDataRegisterMSB = 0x1D
-	GyroXDataRegisterLSB = 0x1E
-	GyroYDataRegisterMSB = 0x1F
-	GyroYDataRegisterLSB = 0x20
-	GyroZDataRegisterMSB = 0x21
-	GyroZDataRegisterLSB = 0x22
-	PowerManagement = 0x3E
+	WhoAmI = 0x0F
+	Control1 = 0x20
+	Control2 = 0x21
+	Control3 = 0x22
+	Control4 = 0x23
+	Control5 = 0x24
+	Reference = 0x25
+	Temperature = 0x26
+	StatusRegister = 0x27
+	GyroXDataLSB = 0x28
+	GyroXDataMSB = 0x29
+	GyroYDataLSB = 0x28
+	GyroYDataMSB = 0x29
+	GyroZDataLSB = 0x28
+	GyroZDataMSB = 0x29
+	FIFOControl = 0x2E
+	FIFOSource = 0x2F
+	InterruptControl = 0x30
+	InterruptSource = 0x31
+	InterruptThresholdXMSB = 0x32
+	InterruptThresholdXLSB = 0x33
+	InterruptThresholdYMSB = 0x34
+	InterruptThresholdYLSB = 0x35
+	InterruptThresholdZMSB = 0x36
+	InterruptThresholdZLSB = 0x37
+	InterruptDuration = 0x38
+	
 	
 	# DLPF, Full Scale Setting
 	FullScale_2000_sec = 0x18 # must be set at reset
@@ -50,8 +63,8 @@ class i2c_itg3205:
 	IC_IntOnDeviceReady = 0x04
 	IC_IntOnDataReady = 0x01
 	
-	# Address will always be either 0x68 (104) or 0x69 (105)
-	def __init__(self, port, addr=0x69):
+	# Address will always be either 0x34 (52) or 0x35 (53)
+	def __init__(self, port, addr=0x34):
 		self.bus = i2c.i2c(port, addr)
 		
 		self.setPowerManagement(0x00)
@@ -76,7 +89,7 @@ class i2c_itg3205:
 		for function in function_set:
 			options = options | function
 		self.bus.write_byte(register, options)
-
+	
 	# Adds to existing options of register	
 	def addOption(self, register, *function_set):
 		options = self.bus.read_byte(register)

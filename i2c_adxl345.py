@@ -160,37 +160,44 @@ class i2c_adxl345:
 			self.axesScale = 16;
 			self.setOption(self.DataFormat, self.DF_Range_16g)
 	
-	def setActivityThreshold(self, g=-1, axis='z'):
+	def setActivityThreshold(self, g=-1, axis='z', change=.5):
 		# If g is left unset, assume currently inactive and set to current state
 		if g == -1:	
 			(x, y, z) = self.getAxes()
 			if axis == 'x':
-				g = x
+				self.addActivity(self.AE_ActivityX)
+				g = math.fabs(x) + change
 			elif axis == 'y':
-				g = y
+				self.addActivity(self.AE_ActivityY)
+				g = math.fabs(y) + change
 			elif axis == 'z':
-				g = z
-				
+				self.addActivity(self.AE_ActivityZ)
+				g = math.fabs(z) + change
+	
 		# Figure out g's and then intervals based on 62.5 mg
-		# Range 0-159 mg
-		intervals = math.floor(g / 0.0625 ) + 5
+		# Range 0-16g
+		intervals = math.floor(math.fabs(g) / 0.0625 )
+		print( intervals);
 		if intervals < 256:
 			self.setOption(self.ActivityThreshold, intervals)
 			
-	def setInactivityThreshold(self, g=-1, axis='z'):
+	def setInactivityThreshold(self, g=-1, axis='z', change=.1):
 		# If g is left unset, assume currently inactive and set to current state
 		if g == -1:	
 			(x, y, z) = self.getAxes()
 			if axis == 'x':
-				g = x
+				self.addActivity(self.AE_InactivityX)
+				g = math.fabs(x) + change
 			elif axis == 'y':
-				g = y
+				self.addActivity(self.AE_InactivityY)
+				g = math.fabs(y) + change
 			elif axis == 'z':
-				g = z
+				self.addActivity(self.AE_InactivityZ)
+				g = math.fabs(z) + change
 				
 		# Figure out g's and then intervals based on 62.5 mg
-		# Range 0-159 mg
-		intervals = math.floor(g / 0.0625 ) + 1
+		# Range 0-16g
+		intervals = math.floor(math.fabs(g) / 0.0625 )
 		if intervals < 256:
 			self.bus.write_byte(self.InactivityThreshold, intervals)
 	
@@ -217,16 +224,38 @@ class i2c_adxl345:
 	def setActivity(self, *function_set):
 		self.setOption(self.AxesEnable, *function_set)
 		
+	def addActivity(self, *function_set):
+		self.addOption(self.AxesEnable, *function_set)
+	
+	def removeActivity(self, *function_set):
+		self.removeOption(self.AxesEnable, *function_set)
+		
 	def setInterrupt(self, *function_set):
 		self.setOption(self.InterruptEnable, *function_set)
 		
 	def setTapAxes(self, *function_set):
 		self.setOption(self.TapAxes, *function_set)
 	
+	
+	# Rewrites all options in register
 	def setOption(self, register, *function_set):
 		options = 0x00
 		for function in function_set:
 			options = options | function
+		self.bus.write_byte(register, options)
+	
+	# Adds to existing options of register	
+	def addOption(self, register, *function_set):
+		options = self.bus.read_byte(register)
+		for function in function_set:
+			options = options | function
+		self.bus.write_byte(register, options)
+		
+	# Removes options of register	
+	def removeOption(self, register, *function_set):
+		options = self.bus.read_byte(register)
+		for function in function_set:
+			options = options & (function ^ 0b11111111)
 		self.bus.write_byte(register, options)
 		
 	def getActivity(self):
@@ -252,7 +281,6 @@ class i2c_adxl345:
 	def getOptions(self, register):
 		options_bin = self.bus.read_byte(register)
 		options = [False, False, False, False, False, False, False, False]
-
 		for i in range(8):
 			if options_bin & (0x01 << i):
 				options[7 - i] = True
