@@ -14,5 +14,5 @@ To easily setup the environment every time you login. Put the two export lines a
 
 CD into the directory you are going to create your python code and type:
 ```
-git clone https://bitbucket.org/thinkbowl/i2clibraries
+git clone https://github.com/ameer1234567890/i2clibraries
 ```
